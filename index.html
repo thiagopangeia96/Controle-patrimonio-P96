@@ -108,6 +108,25 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
 .lightbox img{max-width:90vw;max-height:90vh;border-radius:12px;object-fit:contain;}
 .lightbox-close{position:absolute;top:20px;right:24px;font-size:32px;color:#fff;cursor:pointer;font-weight:700;line-height:1;}
 
+.mat-popup{position:fixed;z-index:350;background:#fff;border-radius:14px;box-shadow:0 16px 48px rgba(89,44,149,.22);border:1.5px solid var(--lav);padding:0;width:400px;max-height:80vh;display:none;flex-direction:column;top:50%;left:50%;transform:translate(-50%,-50%);animation:mpIn .15s ease;}
+.mat-popup.show{display:flex;}
+@keyframes mpIn{from{opacity:0;transform:translate(-50%,-50%) scale(.95)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+.mat-popup-head{padding:14px 16px 10px;border-bottom:1px solid var(--lav-l);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.mat-popup-title{font-size:14px;font-weight:800;color:var(--txt);}
+.mat-popup-sub{font-size:11px;color:var(--txt-s);margin-top:2px;}
+.mat-popup-body{overflow-y:auto;flex:1;padding:12px 16px 16px;}
+.mat-row{display:grid;gap:8px;padding:8px 0;border-bottom:1px solid var(--lav-l);font-size:12px;align-items:center;}
+.mat-row:last-child{border-bottom:none;}
+.mat-row.uso{grid-template-columns:1fr 90px 70px;}
+.mat-row.disp{grid-template-columns:1fr 1fr;}
+.mat-row-hdr{font-size:10px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.05em;}
+.mat-nome{font-weight:600;color:var(--txt);}
+.mat-data{color:var(--txt-s);font-size:11px;text-align:right;}
+.mat-dias{background:var(--lav-l);color:var(--roxo);font-weight:700;padding:2px 8px;border-radius:8px;text-align:center;font-size:11px;}
+.mat-cell{cursor:pointer;transition:all .12s;}
+.mat-cell:hover{background:var(--lav);transform:scale(1.06);}
+.mat-bkd{position:fixed;inset:0;z-index:349;display:none;}
+.mat-bkd.active{display:block;}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--roxo);color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;box-shadow:0 8px 24px rgba(89,44,149,.3);opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;pointer-events:none;z-index:400;}
 .toast.show{opacity:1;transform:translateY(0);}
 .footer{text-align:center;margin-top:20px;padding:14px;color:var(--txt-s);font-size:12px;}
@@ -138,6 +157,12 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
     <div class="kpi"><div class="kpi-lbl">Colaboradores</div><div class="kpi-val" style="color:#185FA5" id="kColab">—</div><div class="kpi-sub">com equipamento ativo</div></div>
   </div>
 
+  <!-- MATRIZ EQUIPAMENTOS POR SETOR -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="ct">Equipamentos em uso por tipo e setor <span>apenas ativos no momento</span></div>
+    <div id="matrizGrid" style="overflow-x:auto;"></div>
+  </div>
+
   <div class="tabs">
     <button class="tab active" onclick="goTab('equipamentos',this)">🖥️ Equipamentos</button>
     <button class="tab" onclick="goTab('movimentacoes',this)">📋 Movimentações</button>
@@ -147,7 +172,7 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
   <!-- TAB EQUIPAMENTOS -->
   <div class="tc active" id="tab-equipamentos">
     <div class="card">
-      <div class="ct">Buscar equipamento <span>clique para ver histórico completo</span></div>
+      <div class="ct">Equipamentos em uso <span>clique para ver histórico completo</span></div>
       <div class="search-bar" style="grid-template-columns:1fr 1fr 1fr 120px auto;">
         <input type="text" id="eqBusca" placeholder="Nº série / IMEI / descrição..." oninput="renderEquipamentos()">
         <select id="eqTipo" onchange="renderEquipamentos()"><option value="">Todos os tipos</option></select>
@@ -160,6 +185,12 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
         <button class="clr-btn" onclick="limparEq()">✕ Limpar</button>
       </div>
       <div id="eqGrid"></div>
+    </div>
+
+    <!-- DISPONÍVEIS -->
+    <div class="card">
+      <div class="ct">📦 Equipamentos disponíveis <span>devolvidos aguardando novo responsável</span></div>
+      <div id="eqDispGrid"></div>
     </div>
   </div>
 
@@ -233,6 +264,17 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
   <img id="lightboxImg" src="" alt="">
 </div>
 
+<div class="mat-bkd" id="matBkd" onclick="fecharMatPopup()"></div>
+<div class="mat-popup" id="matPopup">
+  <div class="mat-popup-head">
+    <div>
+      <div class="mat-popup-title" id="matPopTitle">—</div>
+      <div class="mat-popup-sub" id="matPopSub">—</div>
+    </div>
+    <button onclick="fecharMatPopup()" style="background:var(--lav-l);border:none;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:14px;color:var(--txt-s);font-weight:700;display:flex;align-items:center;justify-content:center;">×</button>
+  </div>
+  <div class="mat-popup-body" id="matPopBody"></div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -298,6 +340,39 @@ window.addEventListener('load',function(){
   else carregarDados();
 });
 
+function normData(s){
+  if(!s) return '—';
+  s=s.toString().trim().split(' ')[0];
+  var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(!m) return s;
+  var p1=parseInt(m[1]),p2=parseInt(m[2]),ano=m[3];
+  if(p1>12) return ('0'+p1).slice(-2)+'/'+('0'+p2).slice(-2)+'/'+ano;
+  return ('0'+p2).slice(-2)+'/'+('0'+p1).slice(-2)+'/'+ano;
+}
+function normHora(s){
+  if(!s) return '';
+  s=s.toString().trim();
+  var m=s.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+  if(!m) return '';
+  var h=parseInt(m[1]),min=m[2],per=(m[3]||'').toUpperCase();
+  if(per==='PM'&&h<12) h+=12;
+  if(per==='AM'&&h===12) h=0;
+  return ('0'+h).slice(-2)+':'+min;
+}
+function parseData(s){
+  if(!s||s==='—') return null;
+  var p=s.split('/');
+  if(p.length!==3) return null;
+  var d=new Date(parseInt(p[2]),parseInt(p[1])-1,parseInt(p[0]));
+  return isNaN(d.getTime())?null:d;
+}
+function diasDesde(dataStr){
+  var dt=parseData(dataStr);
+  if(!dt) return '—';
+  var diff=Math.floor((new Date()-dt)/(1000*60*60*24));
+  return diff>=0?diff+'d':'—';
+}
+
 function carregarDados(){
   toast('Carregando dados...');
   fetch(SCRIPT_URL+'?t='+Date.now())
@@ -317,11 +392,12 @@ function carregarDados(){
 
 function processar(registros){
   todos = registros.map(function(r){
+    var rd=g(r,C.data), rh=g(r,C.hora);
     return {
       ts:       g(r,C.ts),
       fiscal:   g(r,C.fiscal).toUpperCase().trim(),
-      data:     g(r,C.data),
-      hora:     g(r,C.hora),
+      data:     normData(rd),
+      hora:     normHora(rh||rd),  // hora pode estar na coluna data ou hora
       descricao:g(r,C.descricao).toUpperCase().trim(),
       serie:    g(r,C.serie).toUpperCase().trim(),
       tipo:     g(r,C.tipo),
@@ -337,6 +413,7 @@ function processar(registros){
 
   popularSelects();
   renderKPIs();
+  renderMatriz();
   renderEquipamentos();
   renderMovs();
   renderColabs();
@@ -466,6 +543,40 @@ function renderEquipamentos(){
 
   equips.sort(function(a,b){ return a.desc.localeCompare(b.desc); });
 
+  // Renderizar disponíveis separado
+  var disponiveis=equips.filter(function(eq){return !eq.emUso;});
+  var dispGrid=document.getElementById('eqDispGrid');
+  if(dispGrid){
+    if(!disponiveis.length){
+      dispGrid.innerHTML='<div style="text-align:center;padding:24px;color:var(--txt-s);font-size:12px;">Nenhum equipamento disponível no momento</div>';
+    } else {
+      dispGrid.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">'
+        +disponiveis.map(function(eq){
+          var ic=icone(eq.tipo);
+          var ultimaMov=eq.ultimo.movTipo||'—';
+          var ultimaData=eq.ultimo.data||'—';
+          return '<div class="eq-card" onclick="abrirEquip(\'' + eq.serie + '\')" style="border-color:#e2e8f0;">'
+            +'<div class="eq-header">'
+              +'<div>'
+                +'<div class="eq-nome">'+ic+' '+eq.desc+'</div>'
+                +'<div class="eq-serie">'+eq.serie+'</div>'
+              +'</div>'
+              +'<span class="pill" style="background:#f1f5f9;color:#64748b;flex-shrink:0;">Disponível</span>'
+            +'</div>'
+            +'<div class="eq-info">'
+              +'<span>🏷️ <strong>'+eq.tipo+'</strong></span>'
+              +'<span>📅 Dev. em '+ultimaData+'</span>'
+              +'<span>📋 '+eq.movs.length+' mov.</span>'
+            +'</div>'
+          +'</div>';
+        }).join('')
+        +'</div>';
+    }
+  }
+
+  // Agora filtrar apenas em uso para o grid principal
+  equips=equips.filter(function(eq){return eq.emUso;});
+
   var grid=document.getElementById('eqGrid');
   if(!equips.length){
     grid.innerHTML='<div style="text-align:center;padding:40px;color:var(--txt-s)">Nenhum equipamento encontrado</div>';
@@ -531,7 +642,7 @@ function renderMovs(){
       ? '<span class="pill pill-ok">Entrega</span>'
       : '<span class="pill pill-warn">Devolução</span>';
     tb.innerHTML+='<tr onclick="abrirEquip(\''+r.serie+'\')">'
-      +'<td class="mn">'+r.data+'</td>'
+      +'<td class="mn">'+(r.data||'—')+(r.hora?' '+r.hora:'')+'</td>'
       +'<td style="font-size:11px">'+r.fiscal+'</td>'
       +'<td><strong>'+r.descricao+'</strong></td>'
       +'<td class="mn">'+r.serie+'</td>'
@@ -683,7 +794,206 @@ function goTab(id,btn){
   btn.classList.add('active');
 }
 
-function aplicar(){ renderEquipamentos(); renderMovs(); renderColabs(); renderKPIs(); }
+function fecharMatPopup(){
+  document.getElementById('matPopup').classList.remove('show');
+  document.getElementById('matBkd').classList.remove('active');
+}
+
+function abrirMatUso(tipo, setor){
+  var emUso=window._matrizEmUso||[];
+  var lista=emUso.filter(function(r){ return r.tipo===tipo && r.setor===setor; });
+  document.getElementById('matPopTitle').textContent=icone(tipo)+' '+tipo+' — '+setor;
+  document.getElementById('matPopSub').textContent=lista.length+' equipamento(s) em uso neste setor';
+  var body=document.getElementById('matPopBody');
+  var hoje=new Date();
+  body.innerHTML='<div class="mat-row uso mat-row-hdr"><span>Colaborador</span><span style="text-align:right">Recebido em</span><span style="text-align:center">Dias em uso</span></div>';
+  lista.sort(function(a,b){return a.colab.localeCompare(b.colab);}).forEach(function(r){
+    var dias=diasDesde(r.data);
+    body.innerHTML+='<div class="mat-row uso">'
+      +'<span class="mat-nome">'+r.colab+'<div style="font-size:10px;color:var(--txt-s);font-family:monospace">'+r.serie+'</div></span>'
+      +'<span class="mat-data">'+r.data+'</span>'
+      +'<span><span class="mat-dias">'+dias+'</span></span>'
+      +'</div>';
+  });
+  document.getElementById('matPopup').classList.add('show');
+  document.getElementById('matBkd').classList.add('active');
+}
+
+function abrirDispTipo(tipo){
+  var dispPorTipo=window._dispPorTipo||{};
+  var lista=dispPorTipo[tipo]||[];
+  document.getElementById('matPopTitle').textContent='📦 '+tipo+' disponíveis';
+  document.getElementById('matPopSub').textContent=lista.length+' equipamento(s) sem responsável';
+  var body=document.getElementById('matPopBody');
+  body.innerHTML='<div class="mat-row disp mat-row-hdr"><span>Nº Série</span><span>Último usuário</span></div>';
+  lista.forEach(function(r){
+    body.innerHTML+='<div class="mat-row disp">'
+      +'<span style="font-family:monospace;font-size:12px;color:var(--txt)">'+r.serie+'</span>'
+      +'<span style="font-size:11px;color:var(--txt-s)">'+r.colab+'</span>'
+      +'</div>';
+  });
+  document.getElementById('matPopup').classList.add('show');
+  document.getElementById('matBkd').classList.add('active');
+}
+
+function abrirDispGeral(){
+  var dispPorTipo=window._dispPorTipo||{};
+  var total=Object.values(dispPorTipo).reduce(function(s,a){return s+a.length;},0);
+  document.getElementById('matPopTitle').textContent='📦 Todos os equipamentos disponíveis';
+  document.getElementById('matPopSub').textContent=total+' equipamento(s) sem responsável';
+  var body=document.getElementById('matPopBody');
+  body.innerHTML='';
+  Object.keys(dispPorTipo).sort().forEach(function(t){
+    var lista=dispPorTipo[t];
+    body.innerHTML+='<div style="font-size:10px;font-weight:700;color:var(--roxo);text-transform:uppercase;letter-spacing:.05em;padding:8px 0 4px;border-bottom:1px solid var(--lav);">'+icone(t)+' '+t+' ('+lista.length+')</div>';
+    lista.forEach(function(r){
+      body.innerHTML+='<div class="mat-row disp">'
+        +'<span style="font-family:monospace;font-size:12px;color:var(--txt)">'+r.serie+'</span>'
+        +'<span style="font-size:11px;color:var(--txt-s)">'+r.colab+'</span>'
+        +'</div>';
+    });
+  });
+  document.getElementById('matPopup').classList.add('show');
+  document.getElementById('matBkd').classList.add('active');
+}
+
+function renderMatriz(){
+  // Status atual de cada equipamento (último registro por série)
+  var porSerie={};
+  todos.forEach(function(r){
+    var k=r.serie||r.descricao;
+    if(!k) return;
+    if(!porSerie[k]){porSerie[k]={ultimo:r};}
+    else if(r.ts>porSerie[k].ultimo.ts) porSerie[k].ultimo=r;
+  });
+
+  // Filtrar apenas em uso
+  var emUso=Object.values(porSerie)
+    .map(function(o){return o.ultimo;})
+    .filter(function(r){return isEmUso(r.movTipo);});
+
+  // Tipos e setores únicos
+  var tipos  = [...new Set(emUso.map(function(r){return r.tipo;}))].filter(Boolean).sort();
+  var setores= [...new Set(emUso.map(function(r){return r.setor;}))].filter(Boolean).sort();
+
+  if(!tipos.length||!setores.length){
+    document.getElementById('matrizGrid').innerHTML='<div style="text-align:center;padding:24px;color:var(--txt-s);font-size:12px;">Nenhum equipamento em uso</div>';
+    return;
+  }
+
+  // Montar matriz tipo × setor
+  var matriz={};
+  tipos.forEach(function(t){
+    matriz[t]={};
+    setores.forEach(function(s){ matriz[t][s]=0; });
+    matriz[t]['__total']=0;
+  });
+  var totaisSetor={};
+  setores.forEach(function(s){totaisSetor[s]=0;});
+  var totalGeral=0;
+
+  emUso.forEach(function(r){
+    if(matriz[r.tipo]!==undefined && r.setor){
+      matriz[r.tipo][r.setor]=(matriz[r.tipo][r.setor]||0)+1;
+      matriz[r.tipo]['__total']++;
+      totaisSetor[r.setor]=(totaisSetor[r.setor]||0)+1;
+      totalGeral++;
+    }
+  });
+
+  // Calcular disponíveis por tipo
+  var porSerieDisp={};
+  todos.forEach(function(r){
+    var k=r.serie||r.descricao;
+    if(!k) return;
+    if(!porSerieDisp[k]){porSerieDisp[k]={ultimo:r};}
+    else if(r.ts>porSerieDisp[k].ultimo.ts) porSerieDisp[k].ultimo=r;
+  });
+  var dispPorTipo={};
+  Object.values(porSerieDisp).forEach(function(o){
+    var r=o.ultimo;
+    if(isEmUso(r.movTipo)) return;
+    var t=r.tipo||'Outros';
+    if(!dispPorTipo[t]) dispPorTipo[t]=[];
+    dispPorTipo[t].push(r);
+  });
+
+  // Renderizar tabela
+  var html='<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px;">';
+  html+='<thead><tr>'
+    +'<th style="background:var(--roxo-esc);color:#fff;padding:9px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;">Tipo</th>';
+  setores.forEach(function(s){
+    html+='<th style="background:var(--roxo-esc);color:#fff;padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">'+s+'</th>';
+  });
+  html+='<th style="background:var(--roxo);color:#fff;padding:9px 12px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">TOTAL</th>';
+  html+='</tr></thead><tbody>';
+
+  tipos.forEach(function(t, i){
+    var bg=i%2===0?'#fff':'var(--lav-l)';
+    html+='<tr style="background:'+bg+';border-bottom:1px solid var(--lav-l);">';
+    html+='<td style="padding:9px 14px;font-weight:700;color:var(--txt);">'+icone(t)+' '+t+'</td>';
+    setores.forEach(function(s){
+      var v=matriz[t][s]||0;
+      if(v>0){
+        html+='<td style="padding:9px 12px;text-align:center;">'
+          +'<span class="mat-cell" data-tipo="'+t+'" data-setor="'+s+'" onclick="abrirMatUso(this.dataset.tipo,this.dataset.setor)" '
+          +'style="display:inline-block;min-width:28px;padding:3px 10px;font-weight:700;color:var(--roxo);background:var(--lav-l);border-radius:6px;cursor:pointer;">'+v+'</span></td>';
+      } else {
+        html+='<td style="padding:9px 12px;text-align:center;color:#cbd5e1;">—</td>';
+      }
+    });
+    html+='<td style="padding:9px 12px;text-align:center;font-weight:800;color:var(--roxo-esc);background:var(--lav-l);">'+matriz[t]['__total']+'</td>';
+    html+='</tr>';
+  });
+
+  // Linha totais em uso
+  html+='<tr style="background:var(--roxo-esc);">';
+  html+='<td style="padding:9px 14px;font-weight:800;color:#fff;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">TOTAL EM USO</td>';
+  setores.forEach(function(s){
+    html+='<td style="padding:9px 12px;text-align:center;font-weight:800;color:var(--amarelo);font-size:13px;">'+totaisSetor[s]+'</td>';
+  });
+  html+='<td style="padding:9px 12px;text-align:center;font-weight:800;color:var(--amarelo);font-size:14px;">'+totalGeral+'</td>';
+  html+='</tr>';
+
+  // Linha disponíveis
+  html+='<tr style="background:#1e3a5f;">';
+  html+='<td style="padding:9px 14px;font-weight:800;color:#93c5fd;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">📦 DISPONÍVEIS</td>';
+  setores.forEach(function(s){
+    html+='<td style="padding:9px 12px;text-align:center;color:#cbd5e1;">—</td>';
+  });
+  // Total disponíveis clicável por tipo (coluna final)
+  var totalDisp=Object.values(dispPorTipo).reduce(function(s,a){return s+a.length;},0);
+  html+='<td style="padding:9px 12px;text-align:center;">';
+  if(totalDisp>0){
+    html+='<span class="mat-cell" onclick="abrirDispGeral()" '
+      +'style="display:inline-block;padding:3px 10px;font-weight:800;color:#fff;background:#185FA5;border-radius:6px;cursor:pointer;font-size:13px;">'+totalDisp+'</span>';
+  } else {
+    html+='<span style="color:#cbd5e1">0</span>';
+  }
+  html+='</td></tr>';
+
+  // Linhas por tipo disponível
+  var tiposDisp=Object.keys(dispPorTipo).sort();
+  tiposDisp.forEach(function(t){
+    var lista=dispPorTipo[t];
+    html+='<tr style="background:#f0f7ff;border-bottom:1px solid #dbeafe;">';
+    html+='<td style="padding:7px 14px 7px 22px;font-size:11px;color:#185FA5;">'+icone(t)+' '+t+'</td>';
+    setores.forEach(function(s){
+      html+='<td style="padding:7px 12px;text-align:center;color:#cbd5e1;font-size:11px;">—</td>';
+    });
+    html+='<td style="padding:7px 12px;text-align:center;">'
+      +'<span class="mat-cell" data-tipo="'+t+'" onclick="abrirDispTipo(this.dataset.tipo)" '
+      +'style="display:inline-block;padding:2px 10px;font-weight:700;color:#185FA5;background:#dbeafe;border-radius:6px;cursor:pointer;font-size:12px;">'+lista.length+'</span>'
+      +'</td></tr>';
+  });
+
+  html+='</tbody></table>';
+  document.getElementById('matrizGrid').innerHTML=html;
+  window._matrizEmUso=emUso;
+  window._dispPorTipo=dispPorTipo;
+}
+
+function aplicar(){ renderEquipamentos(); renderMovs(); renderColabs(); renderKPIs(); renderMatriz(); }
 
 function toast(msg){
   var t=document.getElementById('toast');
