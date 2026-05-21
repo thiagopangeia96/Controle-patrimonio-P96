@@ -125,6 +125,8 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
 .mat-dias{background:var(--lav-l);color:var(--roxo);font-weight:700;padding:2px 8px;border-radius:8px;text-align:center;font-size:11px;}
 .mat-cell{cursor:pointer;transition:all .12s;}
 .mat-cell:hover{background:var(--lav);transform:scale(1.06);}
+.disp-chip{background:var(--lav-l);border:1px solid var(--lav);border-radius:10px;padding:14px 18px;cursor:pointer;transition:all .15s;min-width:160px;text-align:center;}
+.disp-chip:hover{border-color:var(--roxo-cl);background:var(--lav);transform:translateY(-2px);}
 .mat-bkd{position:fixed;inset:0;z-index:349;display:none;}
 .mat-bkd.active{display:block;}
 .toast{position:fixed;bottom:24px;right:24px;background:var(--roxo);color:#fff;padding:12px 20px;border-radius:10px;font-weight:600;font-size:13px;box-shadow:0 8px 24px rgba(89,44,149,.3);opacity:0;transform:translateY(10px);transition:opacity .25s,transform .25s;pointer-events:none;z-index:400;}
@@ -155,6 +157,7 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
     <div class="kpi"><div class="kpi-lbl">Devolvidos</div><div class="kpi-val" style="color:var(--txt-s)" id="kDevolvidos">—</div><div class="kpi-sub">retornaram ao estoque</div></div>
     <div class="kpi"><div class="kpi-lbl">Movimentações</div><div class="kpi-val" style="color:var(--roxo-cl)" id="kMovs">—</div><div class="kpi-sub">registros totais</div></div>
     <div class="kpi"><div class="kpi-lbl">Colaboradores</div><div class="kpi-val" style="color:#185FA5" id="kColab">—</div><div class="kpi-sub">com equipamento ativo</div></div>
+    <div class="kpi" style="cursor:pointer;border-color:#bbf7d0" onclick="abrirDispGeral()" id="kpiDisp"><div class="kpi-lbl" style="color:var(--ok)">Disponíveis</div><div class="kpi-val" style="color:var(--ok)" id="kDisp">—</div><div class="kpi-sub">clique para detalhar</div></div>
   </div>
 
   <!-- MATRIZ EQUIPAMENTOS POR SETOR -->
@@ -171,6 +174,10 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
 
   <!-- TAB EQUIPAMENTOS -->
   <div class="tc active" id="tab-equipamentos">
+    <div class="card" style="margin-bottom:14px;" id="cardDisp">
+      <div class="ct">📦 Equipamentos disponíveis <span>devolvidos — prontos para novo responsável</span></div>
+      <div id="dispGrid"></div>
+    </div>
     <div class="card">
       <div class="ct">Equipamentos em uso <span>clique para ver histórico completo</span></div>
       <div class="search-bar" style="grid-template-columns:1fr 1fr 1fr 120px auto;">
@@ -206,8 +213,8 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
       </div>
       <div class="tw"><table>
         <thead><tr>
-          <th>Data</th><th>Fiscal</th><th>Equipamento</th><th>Nº Série</th>
-          <th>Tipo Mov.</th><th>Colaborador</th><th>Setor</th><th>Estado</th><th>Assinatura</th>
+          <th>Data / Hora</th><th>Fiscal</th><th>Equipamento</th><th>Nº Série</th>
+          <th>Tipo Mov.</th><th>Colaborador</th><th>Setor</th><th>Dias em uso</th><th>Assinatura</th>
         </tr></thead>
         <tbody id="tbMovs"></tbody>
       </table></div>
@@ -226,7 +233,7 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
       <div class="tw"><table>
         <thead><tr>
           <th>Colaborador</th><th>Setor</th><th>Equipamento</th>
-          <th>Nº Série</th><th>Tipo</th><th>Recebido em</th><th>Status</th>
+          <th>Nº Série</th><th>Tipo</th><th>Recebido em</th><th>Dias em uso</th><th>Status</th>
         </tr></thead>
         <tbody id="tbColabs"></tbody>
       </table></div>
@@ -357,7 +364,8 @@ function normHora(s){
   var h=parseInt(m[1]),min=m[2],per=(m[3]||'').toUpperCase();
   if(per==='PM'&&h<12) h+=12;
   if(per==='AM'&&h===12) h=0;
-  return ('0'+h).slice(-2)+':'+min;
+  var result=('0'+h).slice(-2)+':'+min;
+  return result==='00:00'?'':result;
 }
 function parseData(s){
   if(!s||s==='—') return null;
@@ -413,6 +421,7 @@ function processar(registros){
 
   popularSelects();
   renderKPIs();
+  renderDisp();
   renderMatriz();
   renderEquipamentos();
   renderMovs();
@@ -649,7 +658,7 @@ function renderMovs(){
       +'<td>'+pill+'</td>'
       +'<td><strong>'+r.colab+'</strong></td>'
       +'<td style="font-size:11px">'+r.setor+'</td>'
-      +'<td style="font-size:10px;color:var(--txt-s)">'+r.estado.split('—')[0].trim()+'</td>'
+      +(emUso?'<td><span style="background:var(--lav-l);color:var(--roxo);padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700">'+diasDesde(r.data)+'</span></td>':'<td style="color:var(--txt-s);font-size:11px">—</td>')
       +'<td style="text-align:center">'+(r.assinou.indexOf('Sim')>=0?'✅':'❌')+'</td>'
       +'</tr>';
   });
@@ -687,7 +696,7 @@ function renderColabs(){
   var tb=document.getElementById('tbColabs');
   tb.innerHTML='';
   if(!lista.length){
-    tb.innerHTML='<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--txt-s)">Nenhum resultado</td></tr>';
+    tb.innerHTML='<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--txt-s)">Nenhum resultado</td></tr>';
     return;
   }
   lista.forEach(function(r){
@@ -698,6 +707,7 @@ function renderColabs(){
       +'<td class="mn">'+r.serie+'</td>'
       +'<td style="font-size:11px">'+r.tipo+'</td>'
       +'<td class="mn">'+r.data+'</td>'
+      +'<td><span style="background:var(--lav-l);color:var(--roxo);padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700">'+diasDesde(r.data)+'</span></td>'
       +'<td><span class="pill pill-ok">Em uso</span></td>'
       +'</tr>';
   });
@@ -737,7 +747,8 @@ function abrirEquip(serie){
       +'<div class="hist-dot" style="background:'+cor+'"></div>'
       +'<div class="hist-info">'
         +'<div class="hist-tipo">'+r.movTipo+'</div>'
-        +'<div class="hist-det">'+r.data+' '+r.hora+' · '+r.colab+' · '+r.setor+'</div>'
+        +'<div class="hist-det">'+r.data+(r.hora&&r.hora!=='00:00'?' '+r.hora:'')+(emU?' · <span style="background:var(--lav-l);color:var(--roxo);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700">'+diasDesde(r.data)+'</span>':'')+'</div>'
+        +'<div class="hist-det">'+r.colab+' · '+r.setor+'</div>'
         +(r.fiscal?'<div style="font-size:10px;color:var(--txt-s)">Fiscal: '+r.fiscal+'</div>':'')
         +(r.estado?'<div style="font-size:10px;color:var(--txt-s)">Estado: '+r.estado.split('—')[0].trim()+'</div>':'')
         +(r.obs?'<div style="font-size:11px;color:var(--warn);margin-top:2px">📝 '+r.obs+'</div>':'')
@@ -857,6 +868,57 @@ function abrirDispGeral(){
   document.getElementById('matBkd').classList.add('active');
 }
 
+function renderDisp(){
+  // Status atual por série
+  var porSerie={};
+  todos.forEach(function(r){
+    var k=r.serie||r.descricao;
+    if(!k) return;
+    if(!porSerie[k]) porSerie[k]={ultimo:r};
+    else if(r.ts>porSerie[k].ultimo.ts) porSerie[k].ultimo=r;
+  });
+
+  // Agrupar disponíveis por tipo
+  var dispPorTipo={};
+  Object.values(porSerie).forEach(function(o){
+    var r=o.ultimo;
+    if(isEmUso(r.movTipo)) return;
+    var t=r.tipo||'Outros';
+    if(!dispPorTipo[t]) dispPorTipo[t]=[];
+    dispPorTipo[t].push(r);
+  });
+  window._dispPorTipo=dispPorTipo;
+
+  var tipos=Object.keys(dispPorTipo).sort();
+  var totalDispKPI=tipos.reduce(function(s,t){return s+dispPorTipo[t].length;},0);
+  var kDispEl=document.getElementById('kDisp');
+  if(kDispEl) kDispEl.textContent=n(totalDispKPI);
+  var total=tipos.reduce(function(s,t){return s+dispPorTipo[t].length;},0);
+  var grid=document.getElementById('dispGrid');
+
+  if(!total){
+    grid.innerHTML='<div style="text-align:center;padding:20px;color:var(--txt-s);font-size:12px;">Nenhum equipamento disponível no momento</div>';
+    return;
+  }
+
+  var html='<div style="display:flex;gap:12px;flex-wrap:wrap;">';
+  tipos.forEach(function(t){
+    var lista=dispPorTipo[t];
+    html+='<div class="disp-chip" onclick="abrirDispTipo(this.dataset.tipo)" data-tipo="'+t+'">'
+      +'<div style="font-size:24px;margin-bottom:6px;">'+icone(t)+'</div>'
+      +'<div style="font-size:22px;font-weight:800;color:var(--roxo)">'+lista.length+'</div>'
+      +'<div style="font-size:11px;font-weight:600;color:var(--txt-s);margin-top:2px">'+t+'</div>'
+    +'</div>';
+  });
+  html+='<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:14px 18px;min-width:160px;text-align:center;">'
+    +'<div style="font-size:24px;margin-bottom:6px;">📦</div>'
+    +'<div style="font-size:22px;font-weight:800;color:var(--ok)">'+total+'</div>'
+    +'<div style="font-size:11px;font-weight:600;color:var(--ok);margin-top:2px">Total disponível</div>'
+  +'</div>';
+  html+='</div>';
+  grid.innerHTML=html;
+}
+
 function renderMatriz(){
   // Status atual de cada equipamento (último registro por série)
   var porSerie={};
@@ -901,23 +963,6 @@ function renderMatriz(){
     }
   });
 
-  // Calcular disponíveis por tipo
-  var porSerieDisp={};
-  todos.forEach(function(r){
-    var k=r.serie||r.descricao;
-    if(!k) return;
-    if(!porSerieDisp[k]){porSerieDisp[k]={ultimo:r};}
-    else if(r.ts>porSerieDisp[k].ultimo.ts) porSerieDisp[k].ultimo=r;
-  });
-  var dispPorTipo={};
-  Object.values(porSerieDisp).forEach(function(o){
-    var r=o.ultimo;
-    if(isEmUso(r.movTipo)) return;
-    var t=r.tipo||'Outros';
-    if(!dispPorTipo[t]) dispPorTipo[t]=[];
-    dispPorTipo[t].push(r);
-  });
-
   // Renderizar tabela
   var html='<table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px;">';
   html+='<thead><tr>'
@@ -955,45 +1000,13 @@ function renderMatriz(){
   html+='<td style="padding:9px 12px;text-align:center;font-weight:800;color:var(--amarelo);font-size:14px;">'+totalGeral+'</td>';
   html+='</tr>';
 
-  // Linha disponíveis
-  html+='<tr style="background:#1e3a5f;">';
-  html+='<td style="padding:9px 14px;font-weight:800;color:#93c5fd;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">📦 DISPONÍVEIS</td>';
-  setores.forEach(function(s){
-    html+='<td style="padding:9px 12px;text-align:center;color:#cbd5e1;">—</td>';
-  });
-  // Total disponíveis clicável por tipo (coluna final)
-  var totalDisp=Object.values(dispPorTipo).reduce(function(s,a){return s+a.length;},0);
-  html+='<td style="padding:9px 12px;text-align:center;">';
-  if(totalDisp>0){
-    html+='<span class="mat-cell" onclick="abrirDispGeral()" '
-      +'style="display:inline-block;padding:3px 10px;font-weight:800;color:#fff;background:#185FA5;border-radius:6px;cursor:pointer;font-size:13px;">'+totalDisp+'</span>';
-  } else {
-    html+='<span style="color:#cbd5e1">0</span>';
-  }
-  html+='</td></tr>';
-
-  // Linhas por tipo disponível
-  var tiposDisp=Object.keys(dispPorTipo).sort();
-  tiposDisp.forEach(function(t){
-    var lista=dispPorTipo[t];
-    html+='<tr style="background:#f0f7ff;border-bottom:1px solid #dbeafe;">';
-    html+='<td style="padding:7px 14px 7px 22px;font-size:11px;color:#185FA5;">'+icone(t)+' '+t+'</td>';
-    setores.forEach(function(s){
-      html+='<td style="padding:7px 12px;text-align:center;color:#cbd5e1;font-size:11px;">—</td>';
-    });
-    html+='<td style="padding:7px 12px;text-align:center;">'
-      +'<span class="mat-cell" data-tipo="'+t+'" onclick="abrirDispTipo(this.dataset.tipo)" '
-      +'style="display:inline-block;padding:2px 10px;font-weight:700;color:#185FA5;background:#dbeafe;border-radius:6px;cursor:pointer;font-size:12px;">'+lista.length+'</span>'
-      +'</td></tr>';
-  });
-
   html+='</tbody></table>';
   document.getElementById('matrizGrid').innerHTML=html;
   window._matrizEmUso=emUso;
   window._dispPorTipo=dispPorTipo;
 }
 
-function aplicar(){ renderEquipamentos(); renderMovs(); renderColabs(); renderKPIs(); renderMatriz(); }
+function aplicar(){ renderEquipamentos(); renderMovs(); renderColabs(); renderKPIs(); renderDisp(); renderMatriz(); }
 
 function toast(msg){
   var t=document.getElementById('toast');
