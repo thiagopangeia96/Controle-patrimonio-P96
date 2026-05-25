@@ -313,6 +313,16 @@ var C={
 function g(r,k){return(r[k]||'').toString().trim();}
 function n(v){return Number(v).toLocaleString('pt-BR');}
 
+
+function parseTs(s){
+  if(!s) return 0;
+  // Formato dd/MM/yyyy HH:mm:ss
+  var m=s.toString().match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(m) return new Date(m[3],m[2]-1,m[1],m[4],m[5],m[6]||0).getTime();
+  // Tentar Date direto
+  var d=new Date(s); return isNaN(d)?0:d.getTime();
+}
+
 function normData(s){
   if(!s)return'—';
   s=s.toString().trim().split(' ')[0];
@@ -441,7 +451,7 @@ function renderKPIs(){
     var k=r.serie||r.descricao;if(!k)return;
     if(!porSerie[k]){porSerie[k]={ultimo:r,movs:0};}
     porSerie[k].movs++;
-    if(r.ts>porSerie[k].ultimo.ts)porSerie[k].ultimo=r;
+    if(parseTs(r.ts)>parseTs(porSerie[k].ultimo.ts))porSerie[k].ultimo=r;
   });
   var series=Object.keys(porSerie);
   var emUso=series.filter(function(s){return isEmUso(porSerie[s].ultimo.movTipo);}).length;
@@ -460,7 +470,7 @@ function renderDisp(){
   todos.forEach(function(r){
     var k=r.serie||r.descricao;if(!k)return;
     if(!porSerie[k]){porSerie[k]={ultimo:r};}
-    else if(r.ts>porSerie[k].ultimo.ts)porSerie[k].ultimo=r;
+    else if(parseTs(r.ts)>parseTs(porSerie[k].ultimo.ts))porSerie[k].ultimo=r;
   });
   var dispPorTipo={};
   Object.values(porSerie).forEach(function(o){
@@ -500,7 +510,7 @@ function renderMatriz(){
   todos.forEach(function(r){
     var k=r.serie||r.descricao;if(!k)return;
     if(!porSerie[k]){porSerie[k]={ultimo:r};}
-    else if(r.ts>porSerie[k].ultimo.ts)porSerie[k].ultimo=r;
+    else if(parseTs(r.ts)>parseTs(porSerie[k].ultimo.ts))porSerie[k].ultimo=r;
   });
   var emUso=Object.values(porSerie).map(function(o){return o.ultimo;}).filter(function(r){return isEmUso(r.movTipo);});
   var tipos=[...new Set(emUso.map(function(r){return r.tipo;}))].filter(Boolean).sort();
@@ -544,7 +554,7 @@ function renderEquipamentos(){
     porSerie[k].movs.push(r);
   });
   var equips=Object.values(porSerie).map(function(eq){
-    eq.movs.sort(function(a,b){return b.ts.localeCompare(a.ts);});
+    eq.movs.sort(function(a,b){return parseTs(b.ts)-parseTs(a.ts);});
     eq.ultimo=eq.movs[0];eq.emUso=isEmUso(eq.ultimo.movTipo);return eq;
   }).filter(function(eq){
     if(busca&&eq.desc.indexOf(busca)<0&&eq.serie.indexOf(busca)<0)return false;
@@ -609,7 +619,7 @@ function renderColabs(){
   todos.filter(filtroAtivo).forEach(function(r){
     var k=r.colab+'||'+(r.serie||r.descricao);
     if(!porCS[k])porCS[k]={r:r};
-    else if(r.ts>porCS[k].r.ts)porCS[k].r=r;
+    else if(parseTs(r.ts)>parseTs(porCS[k].r.ts))porCS[k].r=r;
   });
   var lista=Object.values(porCS).map(function(o){return o.r;})
     .filter(function(r){
@@ -709,7 +719,7 @@ function abrirDispGeral(){
 }
 
 function abrirEquip(serie){
-  var movs=todos.filter(function(r){return r.serie===serie;}).sort(function(a,b){return b.ts.localeCompare(a.ts);});
+  var movs=todos.filter(function(r){return r.serie===serie;}).sort(function(a,b){return parseTs(b.ts)-parseTs(a.ts);});
   if(!movs.length)return;
   var ultimo=movs[0];var emUso=isEmUso(ultimo.movTipo);
   document.getElementById('fcEqIcon').textContent=icone(ultimo.tipo);
