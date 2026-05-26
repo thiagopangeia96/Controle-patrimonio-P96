@@ -25,7 +25,7 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:linear-gradient(
 .tb-r{display:flex;gap:8px;align-items:center;position:relative;z-index:1;}
 .ubtn{background:var(--amarelo);color:var(--roxo-esc);border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;}
 .abtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;}
-.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:16px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:16px;}
 .kpi{background:#fff;border-radius:12px;border:1px solid var(--brd);padding:14px 16px;box-shadow:0 2px 8px rgba(89,44,149,.06);cursor:pointer;transition:transform .15s,box-shadow .15s,border-color .15s;}
 .kpi:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(89,44,149,.12);}
 .kpi.kpi-active{border-width:2px;border-color:var(--roxo);box-shadow:0 4px 16px rgba(89,44,149,.2);}
@@ -159,6 +159,11 @@ td.mn{font-family:monospace;font-size:11px;color:var(--txt-s);}
       <div class="kpi-lbl">Colaboradores</div>
       <div class="kpi-val" style="color:#185FA5" id="kColab">—</div>
       <div class="kpi-sub">com equipamento ativo</div>
+    </div>
+    <div class="kpi" style="border-color:#fca5a5;cursor:pointer;" onclick="filtrarDanificados()" id="kpiDanificados">
+      <div class="kpi-lbl" style="color:var(--bad)">⚠️ Danificados</div>
+      <div class="kpi-val" style="color:var(--bad)" id="kDanificados">—</div>
+      <div class="kpi-sub">clique para ver</div>
     </div>
     <div class="kpi" style="border-color:#bbf7d0;" onclick="abrirDispGeral()" id="kpiDisp">
       <div class="kpi-lbl" style="color:var(--ok)">Disponíveis</div>
@@ -437,6 +442,7 @@ function popularSelects(){
 }
 
 function isEmUso(t){if(!t)return false;var s=t.toLowerCase();return s.indexOf('entrega')>=0||s.indexOf('empréstimo')>=0;}
+function isDanificado(e){if(!e)return false;return e.toUpperCase().trim().indexOf('DANIFICADO')===0;}
 
 function filtroAtivo(r){
   if(!filtroKPI||filtroKPI==='todos')return true;
@@ -473,14 +479,23 @@ function renderDisp(){
     else if(parseTs(r.ts)>parseTs(porSerie[k].ultimo.ts))porSerie[k].ultimo=r;
   });
   var dispPorTipo={};
+  var danificados=[];
   Object.values(porSerie).forEach(function(o){
     var r=o.ultimo;
     if(isEmUso(r.movTipo))return;
+    // Separar danificados
+    if(isDanificado(r.estado)){danificados.push(r);return;}
     var t=r.tipo||'Outros';
     if(!dispPorTipo[t])dispPorTipo[t]=[];
     dispPorTipo[t].push(r);
   });
   window._dispPorTipo=dispPorTipo;
+  window._danificados=danificados;
+
+  // Atualizar KPI danificados
+  var kDan=document.getElementById('kDanificados');
+  if(kDan)kDan.textContent=danificados.length;
+
   var tipos=Object.keys(dispPorTipo).sort();
   var total=tipos.reduce(function(s,t){return s+dispPorTipo[t].length;},0);
   var grid=document.getElementById('dispGrid');
@@ -589,7 +604,7 @@ function renderMovs(){
     if(!filtroAtivo(r))return false;
     if(fTipo&&r.tipo!==fTipo)return false;
     if(fMov&&r.movTipo!==fMov)return false;
-    if(busca){var txt=(r.descricao+r.serie+r.colab+r.fiscal+r.setor).toUpperCase();if(txt.indexOf(busca)<0)return false;}
+    if(busca){var txt=(r.descricao+r.serie+r.colab+r.fiscal+r.setor+r.estado).toUpperCase();if(txt.indexOf(busca)<0)return false;}
     return true;
   }).sort(function(a,b){return b.ts.localeCompare(a.ts);});
   var tb=document.getElementById('tbMovs');tb.innerHTML='';
@@ -761,6 +776,18 @@ function fecharFloat(){document.getElementById('fcEq').style.display='none';docu
 function abrirLightbox(src){document.getElementById('lightboxImg').src=src;document.getElementById('lightbox').classList.add('show');}
 function fecharLightbox(){document.getElementById('lightbox').classList.remove('show');document.getElementById('lightboxImg').src='';}
 function goTab(id,btn){document.querySelectorAll('.tc').forEach(function(t){t.classList.remove('active');});document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
+
+function filtrarDanificados(){
+  // Ir para aba movimentações
+  var btn=document.querySelector('.tab[onclick*="movimentacoes"]');
+  if(btn) goTab('movimentacoes',btn);
+  // Aguardar render e filtrar por danificado
+  setTimeout(function(){
+    var el=document.getElementById('mvBusca');
+    if(el){el.value='DANIFICADO';renderMovs();}
+  },100);
+}
+
 function aplicar(){renderEquipamentos();renderMovs();renderColabs();renderKPIs();renderDisp();renderMatriz();}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.className='toast show';setTimeout(function(){t.className='toast';},2800);}
 </script>
