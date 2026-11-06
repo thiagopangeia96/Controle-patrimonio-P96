@@ -333,9 +333,7 @@ function normData(s){
   s=s.toString().trim().split(' ')[0];
   var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(!m)return s;
-  var p1=parseInt(m[1]),p2=parseInt(m[2]),ano=m[3];
-  if(p1>12)return('0'+p1).slice(-2)+'/'+('0'+p2).slice(-2)+'/'+ano;
-  return('0'+p2).slice(-2)+'/'+('0'+p1).slice(-2)+'/'+ano;
+  return('0'+m[1]).slice(-2)+'/'+('0'+m[2]).slice(-2)+'/'+m[3];
 }
 function normHora(s){
   if(!s)return'';
