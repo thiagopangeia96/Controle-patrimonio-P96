@@ -43,7 +43,11 @@ body{font-family:-apple-system,'Segoe UI',sans-serif;background:linear-gradient(
 .mat-popup-body{overflow-y:auto;flex:1;padding:12px 16px 16px;}
 .mat-row{display:grid;gap:8px;padding:8px 0;border-bottom:1px solid var(--lav-l);font-size:12px;align-items:center;}
 .mat-row:last-child{border-bottom:none;}
-.mat-row.uso{grid-template-columns:1fr 90px 70px;}
+.mat-row.uso{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) 84px 64px;}
+.mat-popup.wide{width:660px;max-width:94vw;}
+.mat-eq{font-weight:700;color:var(--txt);line-height:1.25;}
+.mat-sn{font-size:10px;color:var(--txt-s);font-family:monospace;margin-top:1px;}
+.mat-col{font-size:12px;font-weight:600;color:var(--txt);}
 .mat-row.disp{grid-template-columns:1fr 1fr;}
 .mat-row-hdr{font-size:10px;font-weight:700;color:var(--txt-s);text-transform:uppercase;letter-spacing:.05em;}
 .mat-nome{font-weight:600;color:var(--txt);}
@@ -333,7 +337,9 @@ function normData(s){
   s=s.toString().trim().split(' ')[0];
   var m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(!m)return s;
-  return('0'+m[1]).slice(-2)+'/'+('0'+m[2]).slice(-2)+'/'+m[3];
+  var p1=parseInt(m[1]),p2=parseInt(m[2]),ano=m[3];
+  if(p1>12)return('0'+p1).slice(-2)+'/'+('0'+p2).slice(-2)+'/'+ano;
+  return('0'+p2).slice(-2)+'/'+('0'+p1).slice(-2)+'/'+ano;
 }
 function normHora(s){
   if(!s)return'';
@@ -677,7 +683,7 @@ function limparFiltroKPI(){
   renderEquipamentos();renderMovs();renderColabs();renderMatriz();
 }
 
-function fecharMatPopup(){document.getElementById('matPopup').classList.remove('show');document.getElementById('matBkd').classList.remove('active');}
+function fecharMatPopup(){document.getElementById('matPopup').classList.remove('show');document.getElementById('matPopup').classList.remove('wide');document.getElementById('matBkd').classList.remove('active');}
 
 function abrirMatUso(tipo,setor){
   var emUso=window._matrizEmUso||[];
@@ -685,18 +691,24 @@ function abrirMatUso(tipo,setor){
   document.getElementById('matPopTitle').textContent=icone(tipo)+' '+tipo+' — '+setor;
   document.getElementById('matPopSub').textContent=lista.length+' equipamento(s) em uso neste setor';
   var body=document.getElementById('matPopBody');
-  body.innerHTML='<div class="mat-row uso mat-row-hdr"><span>Colaborador</span><span style="text-align:right">Recebido em</span><span style="text-align:center">Dias em uso</span></div>';
-  lista.sort(function(a,b){return a.colab.localeCompare(b.colab);}).forEach(function(r){
-    body.innerHTML+='<div class="mat-row uso">'
-      +'<span class="mat-nome">'+r.colab+'<div style="font-size:10px;color:var(--txt-s);font-family:monospace">'+r.serie+'</div></span>'
+  var html='<div class="mat-row uso mat-row-hdr"><span>Equipamento</span><span>Colaborador</span><span style="text-align:right">Recebido em</span><span style="text-align:center">Dias em uso</span></div>';
+  lista.sort(function(a,b){
+    return (a.descricao||'').localeCompare(b.descricao||'','pt-BR')||(a.serie||'').localeCompare(b.serie||'','pt-BR',{numeric:true});
+  }).forEach(function(r){
+    html+='<div class="mat-row uso">'
+      +'<div><div class="mat-eq">'+(r.descricao||r.tipo)+'</div><div class="mat-sn">'+r.serie+'</div></div>'
+      +'<div class="mat-col">'+r.colab+'</div>'
       +'<span class="mat-data">'+r.data+'</span>'
       +'<span><span class="mat-dias">'+diasDesde(r.data)+'</span></span></div>';
   });
+  body.innerHTML=html;
+  document.getElementById('matPopup').classList.add('wide');
   document.getElementById('matPopup').classList.add('show');
   document.getElementById('matBkd').classList.add('active');
 }
 
 function abrirDispTipo(tipo){
+  document.getElementById('matPopup').classList.remove('wide');
   var dispPorTipo=window._dispPorTipo||{};
   var lista=dispPorTipo[tipo]||[];
   document.getElementById('matPopTitle').textContent='📦 '+tipo+' disponíveis';
@@ -713,6 +725,7 @@ function abrirDispTipo(tipo){
 }
 
 function abrirDispGeral(){
+  document.getElementById('matPopup').classList.remove('wide');
   var dispPorTipo=window._dispPorTipo||{};
   var total=Object.values(dispPorTipo).reduce(function(s,a){return s+a.length;},0);
   document.getElementById('matPopTitle').textContent='📦 Todos os equipamentos disponíveis';
